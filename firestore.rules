@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cada pessoa só lê e escreve dentro de users/{seu uid}.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /lancamentos/{id} {
+        allow read, delete: if request.auth != null && request.auth.uid == uid;
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.tipo in ['in', 'out']
+          && request.resource.data.valor is int && request.resource.data.valor > 0
+          && request.resource.data.categoria is string
+          && request.resource.data.data is string
+          && request.resource.data.data.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+      }
+    }
+  }
+}
