@@ -6059,6 +6059,20 @@
         'manual';
 
 
+      /*
+       * Guarda os dados bancários originais
+       * enquanto a folha estiver aberta.
+       *
+       * Isso permite usar a descricaoOriginal
+       * do banco depois de salvar a alteração,
+       * sem depender de estado.lancs estar atualizado.
+       */
+
+      folha.banco =
+        l?.banco ??
+        null;
+
+
       $('#folha-titulo')
         .textContent =
         l
@@ -6527,10 +6541,9 @@
     $('#folha')
       .addEventListener(
         'submit',
-        (e) => {
+        async (e) => {
 
           e.preventDefault();
-
 
           if (
             folha.valor <= 0
@@ -6605,61 +6618,167 @@
           };
 
 
-          const erro =
-            (err) => {
+          try {
 
-              console.error(err);
+            /*
+             * =====================================================
+             * SALVAR / ATUALIZAR O LANÇAMENTO
+             * =====================================================
+             */
+
+            if (folha.id) {
+
+              await updateDoc(
+                doc(
+                  colLancs(),
+                  folha.id
+                ),
+                dados
+              );
+
+            } else {
+
+              await setDoc(
+                doc(
+                  colLancs()
+                ),
+                {
+                  ...dados,
+                  criadoEm:
+                    serverTimestamp()
+                }
+              );
+
+            }
+
+
+            /*
+             * =====================================================
+             * APLICAR CATEGORIA A LANÇAMENTOS IGUAIS
+             *
+             * Só oferecemos essa opção quando:
+             * - é um lançamento bancário;
+             * - foi definida uma categoria;
+             * - existe uma descrição original do banco.
+             * =====================================================
+             */
+
+            if (
+              folha.origem === 'banco' &&
+              folha.categoria &&
+              folha.id
+            ) {
+
+              const descricaoOriginal =
+                folha.banco?.descricaoOriginal;
+
+
+              if (descricaoOriginal) {
+
+                const semelhantes =
+                  estado.lancs.filter(
+                    (l) =>
+                      l.id !== folha.id &&
+                      l.origem === 'banco' &&
+                      !l.categoria &&
+                      l.tipo === folha.tipo &&
+                      l.banco?.descricaoOriginal ===
+                      descricaoOriginal
+                  );
+
+
+                if (
+                  semelhantes.length > 0
+                ) {
+
+                  const aplicar =
+                    confirm(
+                      `Encontramos ${semelhantes.length} outro${semelhantes.length === 1 ? '' : 's'} lançamento${semelhantes.length === 1 ? '' : 's'} sem categoria com a mesma descrição do banco.\n\n` +
+                      `Deseja aplicar "${folha.categoria}" também a esse${semelhantes.length === 1 ? '' : 's'} lançamento${semelhantes.length === 1 ? '' : 's'}?`
+                    );
+
+
+                  if (aplicar) {
+
+                    const batch =
+                      writeBatch(db);
+
+
+                    for (
+                      const l of semelhantes
+                    ) {
+
+                      batch.update(
+                        doc(
+                          colLancs(),
+                          l.id
+                        ),
+                        {
+                          categoria:
+                            folha.categoria
+                        }
+                      );
+
+                    }
+
+
+                    await batch.commit();
+
+
+                    aviso(
+                      `${semelhantes.length} lançamento${semelhantes.length === 1 ? '' : 's'} categorizado${semelhantes.length === 1 ? '' : 's'} como "${folha.categoria}"`
+                    );
+
+                  }
+
+                }
+
+              }
+
+            }
+
+
+            fecharFolha();
+
+
+            if (
+              folha.id
+            ) {
 
               aviso(
-                'Erro ao salvar'
+                'Lançamento atualizado'
               );
-            };
+
+            } else {
+
+              aviso(
+                'Lançamento salvo'
+              );
+
+            }
 
 
-          if (folha.id) {
+            if (
+              data.slice(0, 7) !==
+              estado.mes
+            ) {
 
-            updateDoc(
-              doc(
-                colLancs(),
-                folha.id
-              ),
-              dados
-            ).catch(erro);
+              mudarMes(
+                data.slice(0, 7)
+              );
 
-          } else {
+            }
 
-            setDoc(
-              doc(
-                colLancs()
-              ),
-              {
-                ...dados,
-                criadoEm:
-                  serverTimestamp()
-              }
-            ).catch(erro);
-          }
+          } catch (err) {
 
+            console.error(err);
 
-          fecharFolha();
-
-
-          aviso(
-            folha.id
-              ? 'Lançamento atualizado'
-              : 'Lançamento salvo'
-          );
-
-
-          if (
-            data.slice(0, 7) !==
-            estado.mes
-          ) {
-
-            mudarMes(
-              data.slice(0, 7)
+            aviso(
+              'Erro ao salvar'
             );
+
           }
+
         }
       );
 
