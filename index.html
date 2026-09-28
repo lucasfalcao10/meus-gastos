@@ -6545,6 +6545,7 @@
 
           e.preventDefault();
 
+
           if (
             folha.valor <= 0
           ) {
@@ -6655,12 +6656,19 @@
             /*
              * =====================================================
              * APLICAR CATEGORIA A LANÇAMENTOS IGUAIS
-             *
-             * Só oferecemos essa opção quando:
-             * - é um lançamento bancário;
-             * - foi definida uma categoria;
-             * - existe uma descrição original do banco.
              * =====================================================
+             *
+             * Para lançamentos bancários:
+             *
+             * - mesma descrição original do banco;
+             * - mesmo tipo (entrada/saída);
+             * - não altera o lançamento atual;
+             * - "Sem categoria" pode receber a categoria;
+             * - "Outros" também pode receber a categoria;
+             * - qualquer outra categoria é preservada.
+             *
+             * A busca é feita no Firestore, portanto inclui
+             * lançamentos de outros meses também.
              */
 
             if (
@@ -6675,16 +6683,64 @@
 
               if (descricaoOriginal) {
 
-                const semelhantes =
-                  estado.lancs.filter(
-                    (l) =>
-                      l.id !== folha.id &&
-                      l.origem === 'banco' &&
-                      !l.categoria &&
-                      l.tipo === folha.tipo &&
-                      l.banco?.descricaoOriginal ===
-                      descricaoOriginal
+                const snap =
+                  await getDocs(
+                    query(
+                      colLancs(),
+                      where(
+                        'origem',
+                        '==',
+                        'banco'
+                      ),
+                      where(
+                        'tipo',
+                        '==',
+                        folha.tipo
+                      ),
+                      where(
+                        'banco.descricaoOriginal',
+                        '==',
+                        descricaoOriginal
+                      )
+                    )
                   );
+
+
+                const semelhantes =
+                  snap.docs
+                    .map(
+                      (d) => ({
+                        id: d.id,
+                        ...d.data()
+                      })
+                    )
+                    .filter(
+                      (l) => {
+
+                        if (
+                          l.id === folha.id
+                        ) {
+                          return false;
+                        }
+
+
+                        /*
+                         * Só substituímos:
+                         *
+                         * - Sem categoria
+                         * - Outros
+                         *
+                         * Categorias escolhidas pelo usuário
+                         * permanecem intactas.
+                         */
+
+                        return (
+                          !l.categoria ||
+                          l.categoria === 'Outros'
+                        );
+
+                      }
+                    );
 
 
                 if (
@@ -6693,8 +6749,8 @@
 
                   const aplicar =
                     confirm(
-                      `Encontramos ${semelhantes.length} outro${semelhantes.length === 1 ? '' : 's'} lançamento${semelhantes.length === 1 ? '' : 's'} sem categoria com a mesma descrição do banco.\n\n` +
-                      `Deseja aplicar "${folha.categoria}" também a esse${semelhantes.length === 1 ? '' : 's'} lançamento${semelhantes.length === 1 ? '' : 's'}?`
+                      `Encontramos ${semelhantes.length} outro${semelhantes.length === 1 ? '' : 's'} lançamento${semelhantes.length === 1 ? '' : 's'} iguais.\n\n` +
+                      `Deseja aplicar "${folha.categoria}" também a eles?`
                     );
 
 
@@ -6725,8 +6781,41 @@
                     await batch.commit();
 
 
+                    /*
+                     * Atualiza imediatamente os lançamentos
+                     * que estão carregados na tela atual,
+                     * sem precisar esperar outro refresh.
+                     */
+
+                    for (
+                      const l of semelhantes
+                    ) {
+
+                      const local =
+                        estado.lancs.find(
+                          (x) =>
+                            x.id === l.id
+                        );
+
+
+                      if (local) {
+
+                        local.categoria =
+                          folha.categoria;
+
+                      }
+
+                    }
+
+
+                    renderInicio();
+                    renderLancamentos();
+                    renderRelatorio();
+                    renderFiltros();
+
+
                     aviso(
-                      `${semelhantes.length} lançamento${semelhantes.length === 1 ? '' : 's'} categorizado${semelhantes.length === 1 ? '' : 's'} como "${folha.categoria}"`
+                      `${semelhantes.length} lançamento${semelhantes.length === 1 ? '' : 's'} atualizado${semelhantes.length === 1 ? '' : 's'} para "${folha.categoria}"`
                     );
 
                   }
