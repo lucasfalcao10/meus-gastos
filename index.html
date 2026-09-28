@@ -3101,23 +3101,15 @@
 
       estado.aba = aba;
 
-
-      for (
-        const b of $$('nav.abas button')
-      ) {
+      for (const b of $$('nav.abas button')) {
 
         if (b.dataset.aba === aba) {
-          b.setAttribute(
-            'aria-current',
-            'page'
-          );
+          b.setAttribute('aria-current', 'page');
         } else {
-          b.removeAttribute(
-            'aria-current'
-          );
+          b.removeAttribute('aria-current');
         }
-      }
 
+      }
 
       $('#v-inicio').hidden =
         aba !== 'inicio';
@@ -3131,14 +3123,16 @@
       $('#v-config').hidden =
         aba !== 'config';
 
-
       $('header.topo').hidden =
         aba === 'config';
-
 
       $('#fab').hidden =
         aba === 'config';
 
+      // Renderiza a tela de lançamentos ao entrar nela.
+      if (aba === 'lancamentos') {
+        renderLancamentos();
+      }
 
       window.scrollTo(0, 0);
     }
