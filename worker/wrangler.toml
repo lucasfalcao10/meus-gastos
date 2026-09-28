@@ -1,0 +1,7 @@
+name = "meus-gastos-pluggy"
+main = "src/index.js"
+compatibility_date = "2026-09-28"
+
+# Defina ALLOWED_ORIGIN para a origem exata do GitHub Pages, por exemplo:
+# https://SEU-USUARIO.github.io
+# Nunca coloque secrets neste arquivo.

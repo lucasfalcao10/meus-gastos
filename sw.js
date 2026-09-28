@@ -1,7 +1,7 @@
 // Service worker: guarda o app (e o SDK do Firebase) para abrir sem internet.
 // Os dados em si ficam no cache do próprio Firestore (IndexedDB), não aqui.
 // Ao publicar uma versão nova, aumente VERSAO para forçar a atualização.
-const VERSAO = 'v1';
+const VERSAO = 'v2';
 const CACHE = `meus-gastos-${VERSAO}`;
 const SHELL = [
   './',

@@ -8,6 +8,26 @@ Arquivos:
 - `index.html` — o app inteiro
 - `manifest.json`, `sw.js`, `icons/` — PWA (ícone, tela cheia, splash, cache offline)
 - `firestore.rules` — regras de segurança (cada usuário só vê os próprios dados)
+- `worker/` — backend Cloudflare Workers Free para Meu Pluggy, sem Firebase Functions
+- `config.js` — URL pública do Worker (não contém segredo)
+
+## Meu Pluggy no plano gratuito
+
+Esta integração preserva o Firebase Spark: o Cloudflare Worker guarda os
+segredos da Pluggy, valida o token do Firebase Auth e entrega ao navegador só
+os dados da própria conta. O navegador grava no Firestore usando o token do
+usuário e as regras existentes. Não há Cloud Functions, conta de cobrança ou
+webhook de escrita automática.
+
+1. Crie o Worker seguindo [worker/README.md](worker/README.md), configurando
+   os secrets no dashboard/CLI da Cloudflare.
+2. Cole a URL `*.workers.dev` do deploy em `config.js`.
+3. No Meu Pluggy, conecte primeiro a conta C6. No app, abra **Config. → Contas
+   e integrações → Conectar banco** e autorize o Meu Pluggy no widget.
+
+O Meu Pluggy atualiza suas conexões diariamente. No app, use **Sincronizar**
+para importar o snapshot disponível. A importação usa um ID determinístico por
+Item, conta e transação, portanto não duplica lançamentos.
 
 ## 1. Firebase (uma vez)
 
@@ -47,5 +67,8 @@ Abra <http://localhost:5500> (o `localhost` já vem autorizado no Firebase Auth)
 ```
 users/{uid}                       { categorias: { out: [...], in: [...] } }
 users/{uid}/lancamentos/{id}      { tipo: "in"|"out", valor: centavos (int),
-                                    categoria, data: "AAAA-MM-DD", descricao, criadoEm }
+                                    categoria, data: "AAAA-MM-DD", descricao, criadoEm,
+                                    origem: "manual"|"banco", banco? }
+users/{uid}/integrations/{itemId} { status, última sincronização, dados do Item }
+users/{uid}/bank_accounts/{id}    { itemId, accountId, nome, saldo, status }
 ```

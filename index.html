@@ -15,6 +15,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Gastos">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="config.js"></script>
+<script src="https://cdn.pluggy.ai/pluggy-connect/v2.8.2/pluggy-connect.js"></script>
 
 <!-- iPhone: splash screens (retrato) -->
 <link rel="apple-touch-startup-image" href="icons/splash-750x1334.png"  media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
@@ -225,6 +227,10 @@
   .grupo button.linha:first-child { border-top: 0; }
   .grupo button.linha:active { background: var(--surface-2); }
   .grupo .sub { color: var(--muted); font-size: 14px; }
+  .integ-status { display: flex; align-items: center; gap: 7px; color: var(--text-2); font-size: 14px; }
+  .integ-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--in); }
+  .integ-acoes { display: flex; gap: 8px; padding: 0 16px 14px; }
+  .origem-banco { color: var(--muted); font-size: 12px; }
   .perigo { color: var(--out); font-weight: 600; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 16px; }
   .chip {
@@ -414,6 +420,9 @@
         </div>
       </div>
 
+      <h2>Contas e integrações</h2>
+      <div class="card grupo" id="integracoes"></div>
+
       <h2>Categorias de despesa</h2>
       <div class="card grupo">
         <div class="chips" id="cats-out"></div>
@@ -500,11 +509,12 @@ const {
 const {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, query, where, orderBy, onSnapshot, getDocs,
-  setDoc, updateDoc, deleteDoc, serverTimestamp,
+  getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp,
 } = await import(`${FB}/firebase-firestore.js`);
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
+const workerUrl = String(window.MEUS_GASTOS_WORKER_URL || '').replace(/\/$/, '');
 
 if (firebaseConfig.apiKey === 'COLE_AQUI') {
   $('#login').hidden = false;
@@ -572,8 +582,9 @@ const estado = {
   cats: structuredClone(CAT_PADRAO),
   aba: 'inicio',
   rtipo: 'out',
+  integracoes: [],
 };
-let pararLancs = null, pararUser = null;
+let pararLancs = null, pararUser = null, pararIntegracoes = null;
 
 const colLancs = () => collection(db, 'users', estado.uid, 'lancamentos');
 const docUser = () => doc(db, 'users', estado.uid);
@@ -605,8 +616,8 @@ $('#btn-sair').addEventListener('click', async () => {
 });
 
 onAuthStateChanged(auth, (user) => {
-  pararLancs?.(); pararUser?.();
-  pararLancs = pararUser = null;
+  pararLancs?.(); pararUser?.(); pararIntegracoes?.();
+  pararLancs = pararUser = pararIntegracoes = null;
   if (!user) {
     estado.uid = null;
     $('#app').hidden = true;
@@ -619,6 +630,7 @@ onAuthStateChanged(auth, (user) => {
   $('#app').hidden = false;
   ouvirUsuario();
   ouvirMes();
+  ouvirIntegracoes();
   renderTudo();
 });
 
@@ -649,6 +661,15 @@ function ouvirMes() {
     renderInicio();
     renderRelatorio();
   }, (e) => { console.error(e); aviso('Erro ao carregar lançamentos'); });
+}
+
+function ouvirIntegracoes() {
+  pararIntegracoes = onSnapshot(collection(db, 'users', estado.uid, 'integrations'), (snap) => {
+    estado.integracoes = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      .filter((i) => i.status === 'connected')
+      .sort((a, b) => String(a.instituicao).localeCompare(String(b.instituicao)));
+    renderIntegracoes();
+  }, (e) => { console.error(e); aviso('Erro ao carregar integrações'); });
 }
 
 function salvarCats() {
@@ -711,7 +732,7 @@ function renderInicio() {
     const sinal = l.tipo === 'in' ? '+' : '−';
     html += `<li class="item" data-id="${esc(l.id)}">
       <div class="ic">${esc((l.categoria || '?').slice(0, 1).toUpperCase())}</div>
-      <div class="txt"><div class="t1">${esc(l.descricao || l.categoria)}</div><div class="t2">${esc(l.categoria)}</div></div>
+      <div class="txt"><div class="t1">${esc(l.descricao || l.categoria)}</div><div class="t2">${esc(l.categoria)}${l.origem === 'banco' ? ' <span class="origem-banco">Banco</span>' : ''}</div></div>
       <div class="v num ${l.tipo}">${sinal} ${esc(fmt(l.valor))}</div>
     </li>`;
   }
@@ -752,6 +773,142 @@ function renderCats() {
     ).join('') || '<span class="sub">Nenhuma categoria.</span>';
   }
 }
+
+function dataHora(valor) {
+  const d = valor?.toDate?.() || (valor ? new Date(valor) : null);
+  return d && !Number.isNaN(d.getTime()) ? d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'ainda não atualizada';
+}
+function renderIntegracoes() {
+  const el = $('#integracoes');
+  if (!estado.integracoes.length) {
+    el.innerHTML = `<div class="linha"><div><div>Nenhuma conta conectada</div><div class="sub">Conecte pelo Meu Pluggy</div></div></div><div class="integ-acoes"><button class="btn" id="conectar-banco">Conectar banco</button></div>`;
+    return;
+  }
+  el.innerHTML = estado.integracoes.map((i) => `<div class="linha"><div><div>${esc(i.instituicao || 'Meu Pluggy')}</div><div class="integ-status">Conectado</div><div class="sub">Última atualização: ${esc(dataHora(i.lastSyncedAt))}</div></div></div><div class="integ-acoes"><button class="btn sec" data-sync-item="${esc(i.id)}">Sincronizar</button><button class="btn del" data-disconnect-item="${esc(i.id)}">Desconectar</button></div>`).join('') + `<div class="integ-acoes"><button class="btn sec" id="conectar-banco">Conectar outro banco</button></div>`;
+}
+
+async function workerFetch(path, options = {}) {
+  if (!workerUrl) throw new Error('Configure a URL do Worker para conectar o banco');
+  const token = await auth.currentUser?.getIdToken(true);
+  if (!token) throw new Error('Entre novamente para conectar o banco');
+  const response = await fetch(workerUrl + path, {
+    ...options,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers || {}) },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || 'Não foi possível consultar o Meu Pluggy');
+  }
+  return response.json();
+}
+
+const idBanco = (itemId, accountId, transactionId) => `bank_${itemId}_${accountId}_${transactionId}`;
+function categoriaBanco(transaction, tipo) {
+  const source = String(transaction.category || '').trim().toLocaleLowerCase('pt-BR');
+  return estado.cats[tipo].find((c) => c.toLocaleLowerCase('pt-BR') === source)
+    || estado.cats[tipo].find((c) => c.toLocaleLowerCase('pt-BR') === 'outros')
+    || estado.cats[tipo][0];
+}
+async function salvarContas(item, accounts) {
+  const batch = writeBatch(db);
+  for (const account of accounts) {
+    batch.set(doc(db, 'users', estado.uid, 'bank_accounts', `${item.id}__${account.id}`), {
+      provedor: 'pluggy', itemId: item.id, accountId: account.id, instituicao: item.institution,
+      nome: account.name, tipo: account.type, subtipo: account.subtype, numeroMascarado: account.number,
+      saldo: account.balance, moeda: account.currencyCode, status: account.status, atualizadoEm: serverTimestamp(),
+    }, { merge: true });
+  }
+  batch.set(doc(db, 'users', estado.uid, 'integrations', item.id), {
+    provedor: 'pluggy', itemId: item.id, instituicao: item.institution, status: 'connected',
+    lastItemUpdatedAt: item.lastUpdatedAt, consentExpiresAt: item.consentExpiresAt,
+    accountCount: accounts.length, updatedAt: serverTimestamp(),
+  }, { merge: true });
+  await batch.commit();
+}
+async function salvarPagina(item, account, transactions) {
+  const rows = transactions.map((transaction) => {
+    const tipo = transaction.type === 'CREDIT' ? 'in' : 'out';
+    const valor = Math.round(Math.abs(Number(transaction.amount)) * 100);
+    const data = String(transaction.date || '').slice(0, 10);
+    if (!transaction.id || !Number.isFinite(valor) || valor <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return null;
+    const id = idBanco(item.id, account.id, transaction.id);
+    return { id, dados: {
+      tipo, valor, categoria: categoriaBanco(transaction, tipo), data,
+      descricao: String(transaction.description || transaction.descriptionRaw || 'Transação bancária').slice(0, 80),
+      origem: 'banco', criadoEm: serverTimestamp(),
+      banco: {
+        provedor: 'pluggy', instituicao: item.institution, itemId: item.id, contaId: account.id,
+        contaNome: account.name, transacaoId: transaction.id,
+        descricaoOriginal: transaction.descriptionRaw || transaction.description || null,
+        categoriaOriginal: transaction.category || null, status: transaction.status || null,
+        tipoOriginal: transaction.type || null, providerId: transaction.providerId || null,
+        providerCode: transaction.providerCode || null, moeda: transaction.currencyCode || 'BRL',
+        atualizadoNaOrigemEm: transaction.updatedAt || null, importadoEm: serverTimestamp(),
+      },
+    }};
+  }).filter(Boolean);
+  const existing = await Promise.all(rows.map(({ id }) => getDoc(doc(colLancs(), id))));
+  const batch = writeBatch(db);
+  rows.forEach(({ id, dados }, index) => {
+    const ref = doc(colLancs(), id);
+    // Uma edição do usuário fica nos campos principais; sincronizações atualizam só a origem.
+    if (existing[index].exists()) batch.set(ref, { origem: 'banco', banco: dados.banco }, { merge: true });
+    else batch.set(ref, dados);
+  });
+  if (rows.length) await batch.commit();
+  return rows.length;
+}
+async function sincronizarItem(itemId) {
+  const { item, accounts } = await workerFetch('/item', { method: 'POST', body: JSON.stringify({ itemId }) });
+  if (!accounts.length) throw new Error('Nenhuma conta foi disponibilizada pelo Meu Pluggy');
+  await salvarContas(item, accounts);
+  let total = 0;
+  for (const account of accounts) {
+    let next = '';
+    do {
+      const params = new URLSearchParams({ itemId: item.id, accountId: account.id });
+      if (next) params.set('next', next);
+      const page = await workerFetch(`/transactions?${params}`, { method: 'GET' });
+      total += await salvarPagina(item, account, page.results || []);
+      next = page.next || '';
+    } while (next);
+  }
+  await updateDoc(doc(db, 'users', estado.uid, 'integrations', item.id), { lastSyncedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return total;
+}
+async function conectarBanco() {
+  if (!window.PluggyConnect) return aviso('Não foi possível abrir a conexão bancária');
+  try {
+    const { accessToken } = await workerFetch('/connect-token', { method: 'POST', body: '{}' });
+    new window.PluggyConnect({
+      connectToken: accessToken, includeSandbox: false, connectorIds: [200],
+      onSuccess: async (data) => {
+        const itemId = data?.item?.id || data?.id;
+        if (!itemId) return aviso('A conexão não retornou um identificador válido');
+        try { aviso('Importando transações...'); const total = await sincronizarItem(itemId); aviso(`${total} transação(ões) importada(s)`); }
+        catch (e) { console.error(e); aviso(e.message || 'A conexão foi criada, mas não foi possível importar'); }
+      },
+      onError: (e) => { console.error(e); aviso(e?.message || 'Não foi possível concluir a conexão'); },
+    }).init();
+  } catch (e) { console.error(e); aviso(e.message || 'Não foi possível iniciar a conexão'); }
+}
+$('#v-config').addEventListener('click', async (e) => {
+  if (e.target.closest('#conectar-banco')) return conectarBanco();
+  const sync = e.target.closest('[data-sync-item]');
+  if (sync) {
+    try { aviso('Buscando atualizações...'); const total = await sincronizarItem(sync.dataset.syncItem); aviso(`${total} transação(ões) sincronizada(s)`); }
+    catch (err) { console.error(err); aviso(err.message || 'Não foi possível sincronizar agora'); }
+    return;
+  }
+  const disconnect = e.target.closest('[data-disconnect-item]');
+  if (disconnect && confirm('Desconectar esta conta? Os lançamentos importados serão mantidos.')) {
+    try {
+      await workerFetch('/item', { method: 'DELETE', body: JSON.stringify({ itemId: disconnect.dataset.disconnectItem }) });
+      await updateDoc(doc(db, 'users', estado.uid, 'integrations', disconnect.dataset.disconnectItem), { status: 'disconnected', disconnectedAt: serverTimestamp() });
+      aviso('Conta desconectada');
+    } catch (err) { console.error(err); aviso(err.message || 'Não foi possível desconectar'); }
+  }
+});
 $('#v-config').addEventListener('click', (e) => {
   const x = e.target.closest('button.x');
   if (!x) return;
@@ -774,7 +931,7 @@ for (const f of $$('form.add-cat')) {
   });
 }
 
-function renderTudo() { renderInicio(); renderRelatorio(); renderCats(); }
+function renderTudo() { renderInicio(); renderRelatorio(); renderCats(); renderIntegracoes(); }
 
 // ---------------------------------------------------------------- tema
 function aplicarTema(t) {
@@ -795,13 +952,14 @@ try { temaSalvo = localStorage.getItem('tema') || 'auto'; } catch (e) {}
 aplicarTema(temaSalvo);
 
 // ---------------------------------------------------------------- folha de lançamento
-const folha = { id: null, tipo: 'out', valor: 0, categoria: null };
+const folha = { id: null, tipo: 'out', valor: 0, categoria: null, origem: 'manual' };
 
 function abrirFolha(l) {
   folha.id = l?.id ?? null;
   folha.tipo = l?.tipo ?? 'out';
   folha.valor = l?.valor ?? 0;
   folha.categoria = l?.categoria ?? null;
+  folha.origem = l?.origem ?? 'manual';
   $('#folha-titulo').textContent = l ? 'Editar lançamento' : 'Novo lançamento';
   // Data padrão: hoje se estiver vendo o mês atual; senão, dia 1 do mês visto.
   $('#f-data').value = l?.data ?? (estado.mes === mesAtual() ? hojeISO() : `${estado.mes}-01`);
@@ -865,6 +1023,7 @@ $('#folha').addEventListener('submit', (e) => {
     categoria: folha.categoria,
     data,
     descricao: $('#f-desc').value.trim(),
+    origem: folha.origem,
   };
   // Sem await: a gravação vai para o cache local na hora e sincroniza quando houver internet.
   const erro = (err) => { console.error(err); aviso('Erro ao salvar'); };
