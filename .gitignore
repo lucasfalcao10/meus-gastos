@@ -1,3 +1,29 @@
+# Sistema
 .DS_Store
+Thumbs.db
+
+# Dependências
 node_modules/
+
+# Firebase
 .firebase/
+
+# Variáveis de ambiente / secrets
+.env
+.env.*
+!.env.example
+
+# Cloudflare Workers / Wrangler
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# Credenciais Firebase / Service Accounts
+serviceAccount*.json
+firebase-adminsdk*.json
+
+# Certificados e chaves privadas
+*.pem
+*.key
+*.p12
+*.pfx
