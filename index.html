@@ -1071,6 +1071,7 @@ function renderFiltros() {
   const contaSel = listaContas.find((c) => c.id === f.conta);
   $('#filtro-conta-txt').textContent = contaSel ? (contaSel.nome || contaSel.instituicao) : 'Conta';
   $('#filtro-conta').classList.toggle('ativo', f.conta !== 'todas');
+  for (const b of $$('#contas [data-conta]')) b.setAttribute('aria-pressed', String(b.dataset.conta === f.conta));
 
   const cats = [...new Set([...estado.lancs.map((l) => l.categoria).filter(Boolean), ...estado.cats.out, ...estado.cats.in])]
     .sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -1220,7 +1221,7 @@ $('#contas').addEventListener('click', (e) => {
   const b = e.target.closest('[data-conta]');
   if (!b) return;
   estado.filtro.conta = estado.filtro.conta === b.dataset.conta ? 'todas' : b.dataset.conta;
-  renderContas(); renderFiltros(); renderInicio();
+  renderFiltros(); renderInicio();
 });
 
 function renderRelatorio() {
