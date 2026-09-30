@@ -1,28 +1,45 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cada pessoa só lê e escreve dentro de users/{seu uid}.
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      // Documento de preferências do próprio usuário.
+      // Não libera as subcoleções; cada subcoleção possui suas próprias regras.
+      allow read, create, update: if isOwner(uid);
 
       match /lancamentos/{id} {
-        allow read, delete: if request.auth != null && request.auth.uid == uid;
-        allow create, update: if request.auth != null && request.auth.uid == uid
+        allow read, delete: if isOwner(uid);
+
+        allow create, update: if isOwner(uid)
           && request.resource.data.tipo in ['in', 'out']
-          && request.resource.data.valor is int && request.resource.data.valor > 0
-          && request.resource.data.categoria is string
+          && request.resource.data.valor is int
+          && request.resource.data.valor > 0
+          && (
+            request.resource.data.categoria == null
+            || request.resource.data.categoria is string
+          )
           && request.resource.data.data is string
-          && request.resource.data.data.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+          && request.resource.data.data.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.origem in ['manual', 'banco'];
       }
 
-      // O cliente autenticado pode manter apenas os metadados das próprias
-      // conexões; os secrets Pluggy nunca chegam ao Firestore.
+      // Somente metadados da conexão chegam ao Firestore.
+      // Os secrets da Pluggy permanecem exclusivamente no Worker.
       match /integrations/{id} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
 
       match /bank_accounts/{id} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read, write: if isOwner(uid);
       }
     }
   }

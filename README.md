@@ -1,74 +1,105 @@
 # Meus Gastos
 
-PWA simples de controle de gastos (HTML + CSS + JS num arquivo só, sem build).
-Dados no Firebase (login Google + Firestore), hospedagem no GitHub Pages.
+PWA de controle financeiro pessoal, sem framework e sem etapa de build. O aplicativo é hospedado no GitHub Pages, usa Google/Firebase Authentication + Firestore e integra contas bancárias pelo Cloudflare Worker + Meu Pluggy.
 
-Arquivos:
+## Estrutura atual
 
-- `index.html` — o app inteiro
-- `manifest.json`, `sw.js`, `icons/` — PWA (ícone, tela cheia, splash, cache offline)
-- `firestore.rules` — regras de segurança (cada usuário só vê os próprios dados)
-- `worker/` — backend Cloudflare Workers Free para Meu Pluggy, sem Firebase Functions
-- `config.js` — URL pública do Worker (não contém segredo)
+```text
+meus-gastos/
+├── index.html                 # Estrutura das telas
+├── config.js                  # Configurações públicas do cliente
+├── assets/
+│   ├── css/app.css            # Estilos do aplicativo
+│   └── js/
+│       ├── app.js             # Eventos, navegação e ciclo de vida
+│       ├── core.js            # Estado, utilitários e regras visuais
+│       ├── data.js            # Camada de acesso ao Firestore
+│       ├── firebase.js        # Inicialização do Firebase SDK
+│       ├── banking.js         # Integração com o Worker/Pluggy
+│       ├── ui.js              # Renderização das telas
+│       ├── theme.js           # Tema antes da pintura inicial
+│       └── theme-manager.js   # Troca e persistência do tema
+├── firestore.rules            # Segurança por usuário
+├── firestore.indexes.json     # Índice da categorização em lote
+├── sw.js                      # Service Worker / PWA
+├── manifest.json              # Metadados da PWA
+└── worker/                    # Cloudflare Worker
+```
 
-## Meu Pluggy no plano gratuito
+## Modelo de dados
 
-Esta integração preserva o Firebase Spark: o Cloudflare Worker guarda os
-segredos da Pluggy, valida o token do Firebase Auth e entrega ao navegador só
-os dados da própria conta. O navegador grava no Firestore usando o token do
-usuário e as regras existentes. Não há Cloud Functions, conta de cobrança ou
-webhook de escrita automática.
+```text
+users/{uid}
+  categorias: { out: [...], in: [...] }
 
-1. Crie o Worker seguindo [worker/README.md](worker/README.md), configurando
-   os secrets no dashboard/CLI da Cloudflare.
-2. Cole a URL `*.workers.dev` do deploy em `config.js`.
-3. No Meu Pluggy, conecte primeiro a conta C6. No app, abra **Config. → Contas
-   e integrações → Conectar banco** e autorize o Meu Pluggy no widget.
+users/{uid}/lancamentos/{id}
+  tipo: "in" | "out"
+  valor: centavos (int)
+  categoria: string | null
+  data: "AAAA-MM-DD"
+  descricao: string
+  origem: "manual" | "banco"
+  criadoEm: timestamp
+  banco?: {
+    provedor
+    instituicao
+    itemId
+    contaId
+    transacaoId
+    descricaoOriginal
+    categoriaOriginal
+    sincronizadoEm
+    importadoEm
+    ...
+  }
 
-O Meu Pluggy atualiza suas conexões diariamente. No app, use **Sincronizar**
-para importar o snapshot disponível. A importação usa um ID determinístico por
-Item, conta e transação, portanto não duplica lançamentos.
+users/{uid}/integrations/{itemId}
+  provedor, itemId, instituicao, status,
+  lastSyncedAt, consentExpiresAt, ...
 
-## 1. Firebase (uma vez)
+users/{uid}/bank_accounts/{itemId__accountId}
+  itemId, accountId, instituicao, nome, saldo, status, ...
+```
 
-1. Em <https://console.firebase.google.com>, com a conta Google pessoal, crie um projeto (Analytics pode ficar desligado).
-2. **Authentication → Sign-in method** → ative **Google**.
-3. **Authentication → Settings → Authorized domains** → adicione `SEU-USUARIO.github.io`.
-4. **Firestore Database** → Criar banco (modo produção, região `southamerica-east1`).
-5. **Firestore → Regras** → cole o conteúdo de `firestore.rules` e publique.
-6. **Configurações do projeto → Seus apps → Web (`</>`)** → registre o app e copie o `firebaseConfig`.
-7. Cole esses valores no `firebaseConfig` dentro de `index.html` (procure `COLE_AQUI`).
+A importação bancária usa um ID determinístico por Item, conta e transação, por isso a sincronização é idempotente. Quando o lançamento já existe, dados editados pelo usuário (valor, data, categoria e descrição) não são sobrescritos.
 
-Os valores do `firebaseConfig` não são secretos — a proteção é feita pelas regras do Firestore.
+`Sem categoria` é representado por `categoria: null`; `Outros` continua sendo uma categoria real. Ao categorizar um lançamento bancário, o aplicativo pode localizar outros lançamentos com a mesma descrição original e oferecer a aplicação da mesma categoria.
 
-## 2. GitHub Pages
+## Firebase
 
-1. Crie um repositório na conta pessoal e faça push deste projeto na branch `main`.
-2. **Settings → Pages** → Source: *Deploy from a branch*, branch `main`, pasta `/ (root)`.
-3. O app fica em `https://SEU-USUARIO.github.io/NOME-DO-REPO/`.
+1. Crie um projeto no Firebase e habilite Google em Authentication.
+2. Crie o Firestore em modo de produção.
+3. Publique `firestore.rules`.
+4. Publique `firestore.indexes.json` se usar o Firebase CLI para gerenciar índices.
+5. Registre o app Web e mantenha o `firebaseConfig` em `config.js`. Esses valores são públicos; a proteção é feita pelas regras do Firestore.
+6. Autorize o domínio do GitHub Pages em Authentication → Settings → Authorized domains.
 
-Ao publicar mudanças, aumente `VERSAO` em `sw.js` para os celulares pegarem a versão nova.
+As regras foram estruturadas para que a permissão do documento `users/{uid}` não seja herdada pelas subcoleções. Cada subcoleção possui sua própria validação.
 
-## 3. No iPhone
+## Cloudflare Worker / Meu Pluggy
 
-Abra o link no **Safari** → botão Compartilhar → **Adicionar à Tela de Início**.
-Cada pessoa entra com a própria conta Google e vê só os próprios lançamentos.
+O Worker mantém `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET`, `FIREBASE_WEB_API_KEY` e `ALLOWED_ORIGIN` nos secrets da Cloudflare. O navegador envia somente o ID token do Firebase. O Worker valida o usuário e verifica se o Item pertence àquele usuário e ao conector Meu Pluggy antes de consultar contas ou transações.
 
-## Testar localmente
+Na pasta `worker/`:
+
+```sh
+npx wrangler secret put PLUGGY_CLIENT_ID
+npx wrangler secret put PLUGGY_CLIENT_SECRET
+npx wrangler secret put FIREBASE_WEB_API_KEY
+npx wrangler secret put ALLOWED_ORIGIN
+npx wrangler deploy
+```
+
+Atualize a URL pública em `config.js`.
+
+## GitHub Pages
+
+A aplicação não precisa de build. Publique a pasta raiz na branch `main`. Ao alterar assets ou módulos do aplicativo, incremente `VERSAO` em `sw.js` para invalidar o shell antigo nos dispositivos.
+
+## Teste local
 
 ```sh
 python3 -m http.server 5500
 ```
 
-Abra <http://localhost:5500> (o `localhost` já vem autorizado no Firebase Auth).
-
-## Modelo de dados
-
-```
-users/{uid}                       { categorias: { out: [...], in: [...] } }
-users/{uid}/lancamentos/{id}      { tipo: "in"|"out", valor: centavos (int),
-                                    categoria, data: "AAAA-MM-DD", descricao, criadoEm,
-                                    origem: "manual"|"banco", banco? }
-users/{uid}/integrations/{itemId} { status, última sincronização, dados do Item }
-users/{uid}/bank_accounts/{id}    { itemId, accountId, nome, saldo, status }
-```
+Abra `http://localhost:5500`.

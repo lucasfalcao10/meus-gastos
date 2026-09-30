@@ -1,56 +1,79 @@
-// Service worker: guarda o app (e o SDK do Firebase) para abrir sem internet.
-// Os dados em si ficam no cache do próprio Firestore (IndexedDB), não aqui.
-// Ao publicar uma versão nova, aumente VERSAO para forçar a atualização.
-const VERSAO = 'v2';
+// Service worker do PWA. O Firestore mantém os dados em IndexedDB; este cache
+// contém somente o shell local do aplicativo e assets estáticos.
+const VERSAO = 'v3';
 const CACHE = `meus-gastos-${VERSAO}`;
 const SHELL = [
   './',
   'index.html',
+  'config.js',
   'manifest.json',
+  'assets/css/app.css',
+  'assets/js/theme.js',
+  'assets/js/core.js',
+  'assets/js/firebase.js',
+  'assets/js/data.js',
+  'assets/js/banking.js',
+  'assets/js/ui.js',
+  'assets/js/theme-manager.js',
+  'assets/js/app.js',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/apple-touch-icon.png',
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE)
+      .then((cache) => cache.addAll(SHELL))
+      .then(() => self.skipWaiting())
+  );
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('meus-gastos-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key.startsWith('meus-gastos-') && key !== CACHE)
+          .map((key) => caches.delete(key))
+      ))
       .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
-  if (req.method !== 'GET') return;
-  const url = new URL(req.url);
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
 
-  // Páginas: rede primeiro (pega atualizações), cache se estiver offline.
-  if (req.mode === 'navigate') {
-    e.respondWith(
-      fetch(req)
-        .then((res) => { const copia = res.clone(); caches.open(CACHE).then((c) => c.put('index.html', copia)); return res; })
+  const url = new URL(request.url);
+  const sameSite = url.origin === self.location.origin;
+  const firebaseSdk = url.hostname === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/');
+
+  if (!sameSite && !firebaseSdk) return;
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put('index.html', copy));
+          return response;
+        })
         .catch(() => caches.match('index.html'))
     );
     return;
   }
 
-  // Arquivos do app e SDK do Firebase (versão fixa na URL): cache primeiro.
-  const mesmoSite = url.origin === self.location.origin;
-  const sdkFirebase = url.hostname === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/');
-  if (!mesmoSite && !sdkFirebase) return; // Firestore, Auth etc. passam direto.
-
-  e.respondWith(
-    caches.match(req).then((hit) => {
-      const rede = fetch(req).then((res) => {
-        if (res.ok) { const copia = res.clone(); caches.open(CACHE).then((c) => c.put(req, copia)); }
-        return res;
+  event.respondWith(
+    caches.match(request).then((hit) => {
+      const network = fetch(request).then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
+        }
+        return response;
       });
-      return hit || rede;
+      return hit || network;
     })
   );
 });

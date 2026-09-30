@@ -1,28 +1,37 @@
-# Meus Gastos — plano
+# Meus Gastos — direção técnica
 
-Projeto pessoal, **totalmente separado do EnterHub** (outra pasta, outro git, contas pessoais).
+Projeto pessoal separado do EnterHub. O foco é oferecer uma experiência simples de finanças pessoais com dados bancários sincronizados, sem introduzir framework/build enquanto o produto continua pequeno.
 
-## Decisões
-- PWA simples: `index.html` (HTML+CSS+JS juntos), `manifest.json`, `sw.js`. Sem framework, sem build.
-- Hospedagem: GitHub Pages (conta pessoal).
-- Dados e login: Firebase (conta Google pessoal), plano gratuito.
-  - Login: botão "Entrar com Google".
-  - Banco: Firestore, cada usuário só vê os próprios dados (regras de segurança por uid).
-  - Cache offline do Firestore: funciona sem internet e sincroniza depois.
-- Uso multiusuário: eu e minha namorada, mesmo link, cada um com a sua conta Google.
-- Otimizado para iPhone (Safari → Adicionar à Tela de Início), responsivo pra computador.
+## Princípios
 
-## MVP
-1. Login com Google
-2. Início: saldo do mês, entradas e despesas, lançamentos recentes
-3. Botão ＋ para lançar entrada ou despesa (valor, categoria, data, descrição)
-4. Filtro/troca de mês
-5. Relatório: gráfico por categoria
-6. Config.: categorias, tema claro/escuro, exportar CSV, sair
-7. PWA: ícone, tela cheia, splash, cache
+- **Sem build por enquanto:** GitHub Pages + JavaScript ES Modules.
+- **Separação por responsabilidade:** UI, estado, Firestore, integração bancária e tema ficam em módulos diferentes.
+- **Dados originais preservados:** informações vindas do banco ficam em `banco.*`; alterações do usuário ficam nos campos apresentados pelo app.
+- **Sincronização idempotente:** ID determinístico por provedor/Item/conta/transação.
+- **Categorias confiáveis:** `null` significa `Sem categoria`; `Outros` é categoria explícita.
+- **Segurança por tenant:** cada usuário só acessa documentos cujo `uid` coincide com o próprio Firebase Auth.
 
-Navegação inferior: 🏠 Início · 📊 Relatório · ⚙️ Config.
+## Funcionalidades atuais
 
-## Fase 2 (depois)
-Cartões, parcelamentos, recorrentes, contas bancárias, metas, evolução dos gastos,
-lembretes, PIN/passkey, orçamento compartilhado do casal.
+- Login Google
+- Dashboard mensal
+- Lançamentos manuais
+- Lançamentos bancários via Meu Pluggy
+- Conta/cartão identificados por conta de origem
+- Categorização e alerta de lançamentos sem categoria
+- Aplicação de categoria a lançamentos bancários equivalentes
+- Análise por categoria
+- Filtros e pesquisa
+- Exportação CSV
+- Temas claro/escuro/automático
+- PWA com cache do shell
+- Firestore offline persistence
+
+## Próximas evoluções naturais
+
+1. Regras permanentes de categorização por estabelecimento.
+2. Normalização de estabelecimento (`Carrefour`, `Uber`, etc.).
+3. Detecção e pareamento de transferências entre contas próprias.
+4. Modelo dedicado para cartão de crédito/faturas/parcelas.
+5. Orçamentos, recorrências e metas.
+6. Só depois avaliar classificação assistida por IA/ML.
