@@ -413,6 +413,12 @@
       font-weight: 600;
     }
 
+    .painel .ajuda {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
     .painel .saldo {
       margin-top: 2px;
       font-size: 36px;
@@ -423,6 +429,10 @@
 
     .painel .saldo.neg {
       color: var(--out);
+    }
+
+    .painel .saldo.pos {
+      color: var(--in);
     }
 
     .comparativo {
@@ -628,52 +638,6 @@
     }
 
     /* =========================================================
-       ATALHOS
-    ========================================================= */
-
-    .atalhos {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-    }
-
-    .atalho {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 58px;
-      padding: 12px 13px;
-      border: 1px solid var(--border);
-      border-radius: 15px;
-      background: var(--surface);
-      box-shadow: var(--shadow-sm);
-      text-align: left;
-    }
-
-    .atalho .icone {
-      width: 34px;
-      height: 34px;
-      flex: none;
-      display: grid;
-      place-items: center;
-      border-radius: 10px;
-      background: var(--surface-2);
-      color: var(--accent);
-    }
-
-    .atalho strong {
-      display: block;
-      font-size: 13px;
-    }
-
-    .atalho span {
-      display: block;
-      margin-top: 1px;
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    /* =========================================================
        LISTA
     ========================================================= */
 
@@ -688,7 +652,7 @@
       justify-content: space-between;
       align-items: baseline;
       gap: 12px;
-      padding: 12px 16px 6px;
+      padding: 14px 16px 8px;
       background: var(--surface);
       color: var(--muted);
       font-size: 11px;
@@ -698,8 +662,22 @@
     }
 
     .lista li.dia .tot {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
       text-transform: none;
       letter-spacing: 0;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .lista li.dia .tot .in {
+      color: var(--in);
+    }
+
+    .lista li.dia .tot .out {
+      color: var(--out);
     }
 
     .lista li.item {
@@ -707,7 +685,7 @@
       align-items: center;
       gap: 12px;
       width: 100%;
-      padding: 11px 16px;
+      padding: 12px 16px;
       border-top: 1px solid var(--border);
       background: transparent;
       text-align: left;
@@ -786,7 +764,61 @@
     }
 
     .v.out {
-      color: var(--text);
+      color: var(--out);
+    }
+
+    .resumo-mes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .resumo-mes .cel {
+      padding: 12px 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+    }
+
+    .resumo-mes .k {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .resumo-mes .v {
+      margin-top: 4px;
+      font-size: 14px;
+      font-weight: 750;
+      letter-spacing: -.02em;
+    }
+
+    .resumo-mes .cel.in .v {
+      color: var(--in);
+    }
+
+    .resumo-mes .cel.out .v {
+      color: var(--out);
+    }
+
+    .resumo-mes .v.in {
+      color: var(--in);
+    }
+
+    .resumo-mes .v.out {
+      color: var(--out);
+    }
+
+    .page-lead {
+      margin: -8px 2px 16px;
+      color: var(--text-2);
+      font-size: 14px;
+      line-height: 1.4;
     }
 
     .tag {
@@ -801,6 +833,11 @@
     .tag.rever {
       background: var(--warn-soft);
       color: var(--warn);
+    }
+
+    .tag.parcela {
+      background: var(--accent-soft);
+      color: var(--accent);
     }
 
     .vazio {
@@ -1622,11 +1659,15 @@
         <div class="card painel">
 
           <div class="rotulo">
-            Saldo de <span id="saldo-mes-label"></span>
+            Resultado de <span id="saldo-mes-label"></span>
           </div>
 
           <div class="saldo num" id="saldo">
             R$ 0,00
+          </div>
+
+          <div class="ajuda">
+            Entradas menos despesas no mês
           </div>
 
           <div class="comparativo" id="comparativo" hidden></div>
@@ -1681,49 +1722,10 @@
         </section>
 
 
-        <h2>Atalhos</h2>
-
-        <div class="atalhos">
-
-          <button class="atalho" id="atalho-lancamentos">
-            <span class="icone">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round">
-                <path d="M4 5h16M4 12h16M4 19h16" />
-              </svg>
-            </span>
-
-            <span>
-              <strong>Lançamentos</strong>
-              <span>Ver tudo</span>
-            </span>
-          </button>
-
-
-          <button class="atalho" id="atalho-analise">
-            <span class="icone">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round">
-                <path d="M4 20V10" />
-                <path d="M10 20V4" />
-                <path d="M16 20v-7" />
-                <path d="M22 20H2" />
-              </svg>
-            </span>
-
-            <span>
-              <strong>Análise</strong>
-              <span>Ver categorias</span>
-            </span>
-          </button>
-
-        </div>
-
-
         <h2>
-          Últimos lançamentos
+          Movimentações recentes
           <button class="acao" id="ver-todos">
-            Ver todos
+            Ver todas
           </button>
         </h2>
 
@@ -1745,6 +1747,28 @@
       <section id="v-lancamentos" hidden>
 
         <h1 class="page-title">Lançamentos</h1>
+        <p class="page-lead">
+          Entradas e despesas do mês selecionado.
+        </p>
+
+        <div class="resumo-mes" id="resumo-lanc">
+
+          <div class="cel in">
+            <div class="k">Entradas</div>
+            <div class="v num" id="resumo-in">R$ 0,00</div>
+          </div>
+
+          <div class="cel out">
+            <div class="k">Despesas</div>
+            <div class="v num" id="resumo-out">R$ 0,00</div>
+          </div>
+
+          <div class="cel">
+            <div class="k">Resultado</div>
+            <div class="v num" id="resumo-saldo">R$ 0,00</div>
+          </div>
+
+        </div>
 
         <div class="busca">
 
@@ -1754,7 +1778,7 @@
             <path d="m20 20-3.2-3.2" />
           </svg>
 
-          <input id="busca" type="search" placeholder="Buscar lançamento" autocomplete="off"
+          <input id="busca" type="search" placeholder="Buscar por descrição ou categoria" autocomplete="off"
             aria-label="Buscar lançamentos">
 
           <button class="limpar" id="busca-limpar" aria-label="Limpar busca" hidden>
@@ -1767,7 +1791,7 @@
         <div class="filtros">
 
           <button class="filtro" data-f-tipo="todos" aria-pressed="true">
-            Tudo
+            Todos
           </button>
 
           <button class="filtro" data-f-tipo="out" aria-pressed="false">
@@ -1839,6 +1863,9 @@
       <section id="v-relatorio" hidden>
 
         <h1 class="page-title">Análise</h1>
+        <p class="page-lead">
+          Onde o dinheiro entrou e saiu neste mês.
+        </p>
 
         <div class="seg" role="group" aria-label="Tipo">
 
@@ -2361,6 +2388,199 @@
     };
 
 
+    /*
+     * Pluggy/Open Finance mandam datetime em UTC.
+     * Para o calendário brasileiro, convertemos para
+     * America/Sao_Paulo antes de virar AAAA-MM-DD.
+     */
+    const dataISOBrasil = (valor) => {
+
+      if (valor == null || valor === '') {
+        return null;
+      }
+
+
+      const s = String(valor).trim();
+
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        return s;
+      }
+
+
+      /* billForecastDate às vezes vem só como AAAA-MM */
+      if (/^\d{4}-\d{2}$/.test(s)) {
+        return `${s}-01`;
+      }
+
+
+      const d = new Date(s);
+
+
+      if (Number.isNaN(d.getTime())) {
+
+        const fatia = s.slice(0, 10);
+
+        return /^\d{4}-\d{2}-\d{2}$/.test(fatia)
+          ? fatia
+          : null;
+      }
+
+
+      const partes =
+        new Intl.DateTimeFormat(
+          'en-CA',
+          {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }
+        ).formatToParts(d);
+
+
+      const pegar = (tipo) =>
+        partes.find(
+          (p) => p.type === tipo
+        )?.value;
+
+
+      const y = pegar('year');
+      const m = pegar('month');
+      const day = pegar('day');
+
+
+      if (!y || !m || !day) {
+        return null;
+      }
+
+
+      return `${y}-${m}-${day}`;
+    };
+
+
+    /*
+     * Conta corrente: data do extrato.
+     * Cartão à vista: data da compra (quando existir).
+     * Cartão parcelado: competência da fatura/parcela
+     * (senão todas as parcelas cairiam no mês da compra).
+     */
+    const dataDaTransacao = (
+      transaction,
+      account
+    ) => {
+
+      const meta =
+        transaction.creditCardMetadata ||
+        {};
+
+
+      const postagem =
+        dataISOBrasil(
+          transaction.date
+        );
+
+
+      const compra =
+        dataISOBrasil(
+          meta.purchaseDate
+        );
+
+
+      const previsao =
+        dataISOBrasil(
+          meta.billForecastDate
+        );
+
+
+      const postFaturaBruto =
+        dataISOBrasil(
+          meta.billPostDate
+        );
+
+
+      const postFatura =
+        postFaturaBruto &&
+          !postFaturaBruto.startsWith(
+            '0001'
+          )
+          ? postFaturaBruto
+          : null;
+
+
+      const parcelas =
+        Number(
+          meta.totalInstallments
+        ) || 0;
+
+
+      const parcelado =
+        parcelas > 1;
+
+
+      const ehCartao =
+        account?.type === 'CREDIT' ||
+        Boolean(
+          transaction.creditCardMetadata
+        );
+
+
+      let data = null;
+
+
+      if (parcelado) {
+
+        data =
+          postFatura ||
+          previsao ||
+          postagem ||
+          compra;
+
+      } else if (ehCartao && compra) {
+
+        data = compra;
+
+      } else {
+
+        data =
+          postagem ||
+          compra;
+      }
+
+
+      return {
+        data,
+        dataCompra: compra,
+        dataPostagem: postagem,
+        dataFatura:
+          postFatura ||
+          previsao ||
+          null,
+        parcelaAtual:
+          Number(
+            meta.installmentNumber
+          ) || null,
+        parcelasTotal:
+          parcelas || null,
+        billId:
+          meta.billId || null,
+      };
+    };
+
+
+    const capitalizar = (s) => {
+
+      const t = String(s || '');
+
+      if (!t) {
+        return '';
+      }
+
+      return t.charAt(0).toUpperCase() +
+        t.slice(1);
+    };
+
+
     const mesAtual = () =>
       hojeISO().slice(0, 7);
 
@@ -2418,11 +2638,13 @@
         return 'Ontem';
       }
 
-      return dt.toLocaleDateString('pt-BR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'short'
-      });
+      return capitalizar(
+        dt.toLocaleDateString('pt-BR', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'short'
+        })
+      );
     };
 
 
@@ -3152,27 +3374,11 @@
     }
 
 
-    $('#atalho-lancamentos')
-      .addEventListener(
-        'click',
-        () =>
-          irPara('lancamentos')
-      );
-
-
     $('#ver-todos')
       .addEventListener(
         'click',
         () =>
           irPara('lancamentos')
-      );
-
-
-    $('#atalho-analise')
-      .addEventListener(
-        'click',
-        () =>
-          irPara('relatorio')
       );
 
 
@@ -3693,6 +3899,12 @@
           : '−';
 
 
+      const tipoLabel =
+        l.tipo === 'in'
+          ? 'Entrada'
+          : 'Despesa';
+
+
       const banco =
         l.origem === 'banco';
 
@@ -3716,6 +3928,19 @@
         banco
           ? bancoDoLanc(l)
           : '';
+
+
+      const parcela =
+        l.banco?.parcelaAtual &&
+          l.banco?.parcelasTotal > 1
+          ? `${l.banco.parcelaAtual}/${l.banco.parcelasTotal}`
+          : '';
+
+
+      const ehCartao =
+        l.banco?.ehCartao ||
+        l.banco?.contaTipo ===
+        'CREDIT';
 
 
       return `
@@ -3752,7 +3977,7 @@
               ${esc(
           l.descricao ||
           categoria ||
-          'Lançamento'
+          tipoLabel
         )}
             </div>
 
@@ -3771,10 +3996,23 @@
                   `
         }
 
+              ${parcela
+          ? `
+                    <span class="sep">·</span>
+                    <span class="tag parcela">
+                      Parc. ${esc(parcela)}
+                    </span>
+                  `
+          : ''
+        }
+
               <span class="sep">·</span>
 
               <span class="conta-nome">
-                ${esc(conta)}
+                ${ehCartao
+          ? 'Cartão · '
+          : ''
+        }${esc(conta)}
               </span>
 
             </div>
@@ -3818,6 +4056,13 @@
         .classList.toggle(
           'neg',
           saldo < 0
+        );
+
+
+      $('#saldo')
+        .classList.toggle(
+          'pos',
+          saldo > 0
         );
 
 
@@ -4056,6 +4301,45 @@
         filtrados();
 
 
+      const totaisMes =
+        totais(estado.lancs);
+
+
+      const saldoMes =
+        totaisMes.entrada -
+        totaisMes.saida;
+
+
+      $('#resumo-in')
+        .textContent =
+        fmt(totaisMes.entrada);
+
+
+      $('#resumo-out')
+        .textContent =
+        fmt(totaisMes.saida);
+
+
+      const saldoEl =
+        $('#resumo-saldo');
+
+
+      saldoEl.textContent =
+        fmt(saldoMes);
+
+
+      saldoEl.classList.toggle(
+        'in',
+        saldoMes > 0
+      );
+
+
+      saldoEl.classList.toggle(
+        'out',
+        saldoMes < 0
+      );
+
+
       const res =
         $('#resultado');
 
@@ -4072,7 +4356,7 @@
         res.innerHTML = `
           <span>
             <b>${lista.length}</b>
-            lançamento${lista.length === 1
+            filtrado${lista.length === 1
             ? ''
             : 's'
           }
@@ -4093,7 +4377,7 @@
 
             ${t.saida
             ? `
-                  <b>
+                  <b class="v out">
                     − ${esc(
               fmt(t.saida)
             )}
@@ -4136,6 +4420,10 @@
               <li class="vazio">
                 Nenhum lançamento
                 neste mês.
+                <br>
+                Use as setas do mês
+                acima ou sincronize
+                o banco.
               </li>
             `;
 
@@ -4164,11 +4452,6 @@
             totais(doDia);
 
 
-          const liquido =
-            t.entrada -
-            t.saida;
-
-
           html += `
             <li class="dia">
 
@@ -4179,17 +4462,22 @@
               </span>
 
               <span class="tot num">
-                ${liquido < 0
-              ? '−'
-              : '+'
+                ${t.entrada
+              ? `
+                      <span class="in">
+                        + ${esc(fmt(t.entrada))}
+                      </span>
+                    `
+              : ''
             }
-                ${esc(
-              fmt(
-                Math.abs(
-                  liquido
-                )
-              )
-            )}
+                ${t.saida
+              ? `
+                      <span class="out">
+                        − ${esc(fmt(t.saida))}
+                      </span>
+                    `
+              : ''
+            }
               </span>
 
             </li>
@@ -4303,7 +4591,10 @@
 
 
                   <div class="nome">
-                    ${esc(
+                    ${c.tipo === 'CREDIT'
+                  ? 'Cartão · '
+                  : ''
+                }${esc(
                   c.nome ||
                   c.subtipo ||
                   'Conta'
@@ -5149,6 +5440,10 @@
           .map(
             (transaction) => {
 
+              /*
+               * Cartão: amount > 0 = despesa (aumenta dívida).
+               * Conta: type DEBIT/CREDIT define o fluxo.
+               */
               const tipo =
                 transaction.type ===
                   'CREDIT'
@@ -5166,14 +5461,15 @@
                 );
 
 
-              const data =
-                String(
-                  transaction.date ||
-                  ''
-                ).slice(
-                  0,
-                  10
+              const datas =
+                dataDaTransacao(
+                  transaction,
+                  account
                 );
+
+
+              const data =
+                datas.data;
 
 
               if (
@@ -5182,6 +5478,7 @@
                   valor
                 ) ||
                 valor <= 0 ||
+                !data ||
                 !/^\d{4}-\d{2}-\d{2}$/.test(
                   data
                 )
@@ -5195,6 +5492,14 @@
                   item.id,
                   account.id,
                   transaction.id
+                );
+
+
+              const ehCartao =
+                account?.type ===
+                'CREDIT' ||
+                Boolean(
+                  transaction.creditCardMetadata
                 );
 
 
@@ -5247,6 +5552,16 @@
                     contaNome:
                       account.name,
 
+                    contaTipo:
+                      account.type ||
+                      null,
+
+                    contaSubtipo:
+                      account.subtype ||
+                      null,
+
+                    ehCartao,
+
                     transacaoId:
                       transaction.id,
 
@@ -5278,6 +5593,24 @@
                     moeda:
                       transaction.currencyCode ||
                       'BRL',
+
+                    dataCompra:
+                      datas.dataCompra,
+
+                    dataPostagem:
+                      datas.dataPostagem,
+
+                    dataFatura:
+                      datas.dataFatura,
+
+                    parcelaAtual:
+                      datas.parcelaAtual,
+
+                    parcelasTotal:
+                      datas.parcelasTotal,
+
+                    billId:
+                      datas.billId,
 
                     atualizadoNaOrigemEm:
                       transaction.updatedAt ||
@@ -5311,6 +5644,10 @@
         writeBatch(db);
 
 
+      let novos = 0;
+      let corrigidos = 0;
+
+
       rows.forEach(
         (
           { id, dados },
@@ -5326,33 +5663,60 @@
 
           /*
            * Se já existe:
-           *
-           * NÃO sobrescrevemos:
-           * - valor
-           * - data
-           * - categoria
-           * - descrição
-           *
-           * Mantemos apenas os dados
-           * provenientes do banco atualizados.
+           * - atualiza data/valor/tipo do banco
+           *   (corrige fatura vs compra)
+           * - preserva categoria e descrição
+           *   escolhidas pelo usuário
            */
 
           if (
             existing[index].exists()
           ) {
 
+            const atual =
+              existing[index].data();
+
+
+            const patch = {
+              origem: 'banco',
+              data: dados.data,
+              valor: dados.valor,
+              tipo: dados.tipo,
+              banco: dados.banco,
+            };
+
+
+            if (
+              !String(
+                atual.categoria ||
+                ''
+              ).trim() &&
+              dados.categoria
+            ) {
+              patch.categoria =
+                dados.categoria;
+            }
+
+
+            if (
+              atual.data !==
+              dados.data
+            ) {
+              corrigidos++;
+            }
+
+
             batch.set(
               ref,
-              {
-                origem: 'banco',
-                banco: dados.banco
-              },
+              patch,
               {
                 merge: true
               }
             );
 
           } else {
+
+            novos++;
 
             batch.set(
               ref,
@@ -5368,7 +5732,22 @@
       }
 
 
-      return rows.length;
+      return {
+        total: rows.length,
+        novos,
+        corrigidos,
+        meses: [
+          ...new Set(
+            rows.map(
+              (r) =>
+                r.dados.data.slice(
+                  0,
+                  7
+                )
+            )
+          )
+        ].sort(),
+      };
     }
 
 
@@ -5407,6 +5786,9 @@
 
 
       let total = 0;
+      let novos = 0;
+      let corrigidos = 0;
+      const meses = new Set();
 
 
       for (
@@ -5442,12 +5824,29 @@
             );
 
 
-          total +=
+          const resultado =
             await salvarPagina(
               item,
               account,
               page.results || []
             );
+
+
+          total +=
+            resultado.total;
+
+          novos +=
+            resultado.novos;
+
+          corrigidos +=
+            resultado.corrigidos;
+
+
+          for (
+            const m of resultado.meses
+          ) {
+            meses.add(m);
+          }
 
 
           next =
@@ -5475,7 +5874,12 @@
       );
 
 
-      return total;
+      return {
+        total,
+        novos,
+        corrigidos,
+        meses: [...meses].sort(),
+      };
     }
 
 
@@ -5505,7 +5909,10 @@
 
 
       let total = 0;
+      let novos = 0;
+      let corrigidos = 0;
       let falhas = 0;
+      const meses = new Set();
 
 
       for (
@@ -5514,10 +5921,21 @@
 
         try {
 
-          total +=
+          const r =
             await sincronizarItem(
               i.id
             );
+
+
+          total += r.total;
+          novos += r.novos;
+          corrigidos +=
+            r.corrigidos;
+
+
+          for (const m of r.meses) {
+            meses.add(m);
+          }
 
         } catch (e) {
 
@@ -5537,11 +5955,43 @@
         );
 
 
-      aviso(
-        falhas
-          ? `${total} lançamento(s) atualizados, ${falhas} conta(s) falharam`
-          : `${total} lançamento(s) atualizados`
-      );
+      const mesesTxt =
+        [...meses]
+          .map(
+            (m) =>
+              nomeMesCurto(m)
+          )
+          .join(', ');
+
+
+      if (falhas) {
+
+        aviso(
+          `${novos} novos, ${corrigidos} datas corrigidas — ${falhas} conta(s) falharam`
+        );
+
+      } else if (
+        !total
+      ) {
+
+        aviso(
+          'Nenhuma movimentação nova'
+        );
+
+      } else if (
+        meses.size > 1
+      ) {
+
+        aviso(
+          `${novos} novos · ${corrigidos} datas ajustadas · meses: ${mesesTxt}`
+        );
+
+      } else {
+
+        aviso(
+          `${novos} novos · ${corrigidos} datas ajustadas`
+        );
+      }
     }
 
 
@@ -5614,14 +6064,25 @@
                 );
 
 
-                const total =
+                const r =
                   await sincronizarItem(
                     itemId
                   );
 
 
+                const mesesTxt =
+                  r.meses
+                    .map(
+                      (m) =>
+                        nomeMesCurto(m)
+                    )
+                    .join(', ');
+
+
                 aviso(
-                  `${total} transação(ões) importada(s)`
+                  r.meses.length > 1
+                    ? `${r.novos} importadas · meses: ${mesesTxt}`
+                    : `${r.novos} transação(ões) importada(s)`
                 );
 
               } catch (e) {
@@ -5691,14 +6152,14 @@
               );
 
 
-              const total =
+              const r =
                 await sincronizarItem(
                   sync.dataset.syncItem
                 );
 
 
               aviso(
-                `${total} transação(ões) sincronizada(s)`
+                `${r.novos} novas · ${r.corrigidos} datas ajustadas`
               );
 
             } catch (err) {
@@ -6153,7 +6614,44 @@
 
         [
           'Conta',
-          nomeContaDoLanc(l)
+          [
+            l.banco?.ehCartao ||
+              l.banco?.contaTipo ===
+              'CREDIT'
+              ? 'Cartão'
+              : null,
+            nomeContaDoLanc(l)
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        ],
+
+        [
+          'Data no app',
+          l.data
+            ? nomeDia(l.data)
+            : '—'
+        ],
+
+        [
+          'Data da compra',
+          l.banco?.dataCompra ||
+          '—'
+        ],
+
+        [
+          'Data na fatura/extrato',
+          l.banco?.dataPostagem ||
+          l.banco?.dataFatura ||
+          '—'
+        ],
+
+        [
+          'Parcela',
+          l.banco?.parcelaAtual &&
+            l.banco?.parcelasTotal > 1
+            ? `${l.banco.parcelaAtual} de ${l.banco.parcelasTotal}`
+            : '—'
         ],
 
         [
@@ -6176,7 +6674,11 @@
           )
         ],
 
-      ];
+      ].filter(
+        ([, v]) =>
+          v &&
+          v !== '—'
+      );
 
 
       box.hidden = false;
